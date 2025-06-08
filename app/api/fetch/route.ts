@@ -53,11 +53,12 @@ export async function POST(request: Request) {
     const nextChapterUrl = await getNextChapterHref(url);
 
     return NextResponse.json({ chunks, nextChapterUrl });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in fetch API:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json({ 
       error: 'Internal server error', 
-      details: error.message 
+      details: errorMessage 
     }, { status: 500 });
   }
 }
