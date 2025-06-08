@@ -31,6 +31,7 @@ export default function Home() {
       setNextChapterUrl(nextUrl);
     } catch (err) {
       setNextChapterUrl('');
+      console.error('Lỗi khi lấy URL chương tiếp theo:', err);
     }
 
     for (const chunk of chunks) {
