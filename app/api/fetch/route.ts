@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
-import { NextRequest } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const { url } = await request.json();
     
@@ -10,16 +9,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
-    const res = await fetch(url);
+    // Kiểm tra URL hợp lệ
+    try {
+      new URL(url);
+    } catch {
+      return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
+    }
+
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(10000), // Timeout sau 10 giây
+    });
+
     if (!res.ok) {
-      return NextResponse.json({ error: 'Failed to fetch URL' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Failed to fetch URL', 
+        status: res.status, 
+        statusText: res.statusText 
+      }, { status: 500 });
     }
 
     const html = await res.text();
     const $ = cheerio.load(html);
     const paragraphs = $('#bookContentBody p').toArray();
 
-    const chunks = [];
+    const chunks: string[] = [];
     let buffer = '';
 
     for (const p of paragraphs) {
@@ -37,15 +53,25 @@ export async function POST(request: NextRequest) {
     const nextChapterUrl = await getNextChapterHref(url);
 
     return NextResponse.json({ chunks, nextChapterUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in fetch API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    }, { status: 500 });
   }
 }
 
-async function getNextChapterHref(url: string) {
+async function getNextChapterHref(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+
     const html = await res.text();
     const $ = cheerio.load(html);
 
